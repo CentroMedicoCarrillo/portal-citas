@@ -242,22 +242,43 @@ document.addEventListener('DOMContentLoaded', () => {
             patientEmail: patientEmailInput.value.trim()
         };
 
-        // Simulate API call
-        setTimeout(() => {
-            // Mark the slot as booked
+// Inicia el envío de datos reales a Make.com
+        fetch('https://hook.us2.make.com/e38eflwwnios13ggi9h4jlkj31s2xc28 ', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(appointmentDetails),
+        })
+        .then(response => {
+            if (response.ok) {
+                return response.text(); // O .json() si Make responde con JSON
+            }
+            throw new Error('Hubo un problema con la solicitud a Make.com.');
+        })
+        .then(data => {
+            console.log('Respuesta de Make.com:', data); // Puedes ver esto en la consola del navegador
+            
+            // Si la respuesta es la esperada, marca la cita como agendada
             const slotKey = `${appointmentDetails.date} ${appointmentDetails.time}`;
             bookedAppointments[slotKey] = true;
-            selectedSlot.classList.add('booked');
-            selectedSlot.removeEventListener('click', () => openModal(selectedSlot)); // Remove click listener
-            selectedSlot.title = "Cita ya agendada";
-
-            alert(`Cita confirmada para ${appointmentDetails.patientName} con ${appointmentDetails.doctor} el ${formatDate(new Date(appointmentDetails.date))} a las ${appointmentDetails.time}.`);
+            if (selectedSlot) {
+                selectedSlot.classList.add('booked');
+                selectedSlot.title = "Cita ya agendada";
+            }
+            
+            alert(`¡Cita confirmada para ${appointmentDetails.patientName}! Revisa tu correo para la invitación de calendario.`);
             closeModal();
+        })
+        .catch((error) => {
+            console.error('Error:', error);
+            alert('No se pudo confirmar la cita. Por favor, inténtalo de nuevo.');
+        })
+        .finally(() => {
+            // Esto se ejecuta siempre, haya éxito o error
             confirmAppointmentBtn.textContent = 'Confirmar Cita';
             confirmAppointmentBtn.disabled = false;
-        }, 1500); // Simulate network delay
-    });
-
+        });
     // Navigation buttons
     prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
