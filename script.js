@@ -3,8 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const currentWeekDisplay = document.getElementById('current-week-display');
     const prevWeekBtn = document.getElementById('prev-week-btn');
     const nextWeekBtn = document.getElementById('next-week-btn');
-    const monthSelect = document.getElementById('month-select'); // New
-    const yearSelect = document.getElementById('year-select');   // New
+    const monthSelect = document.getElementById('month-select');
+    const yearSelect = document.getElementById('year-select');
     const appointmentModal = document.getElementById('appointment-modal');
     const closeModalBtn = document.getElementById('close-modal-btn');
     const modalDoctorName = document.getElementById('modal-doctor-name');
@@ -242,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
             patientEmail: patientEmailInput.value.trim()
         };
 
-// Inicia el envío de datos reales a Make.com
+        // Inicia el envío de datos reales a Make.com
         fetch('https://hook.us2.make.com/e38eflwwnios13ggi9h4jlkj31s2xc28 ', {
             method: 'POST',
             headers: {
@@ -279,6 +279,8 @@ document.addEventListener('DOMContentLoaded', () => {
             confirmAppointmentBtn.textContent = 'Confirmar Cita';
             confirmAppointmentBtn.disabled = false;
         });
+    });
+    
     // Navigation buttons
     prevWeekBtn.addEventListener('click', () => {
         currentWeekStart.setDate(currentWeekStart.getDate() - 7);
