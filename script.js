@@ -40,20 +40,21 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}`;
     };
 
+    // --- SECCIÓN MODIFICADA ---
     // Generate time slots for a day
     const generateTimeSlots = () => {
         const slots = [];
-        // Example slots from 9:00 to 17:00, every 30 minutes, skipping 14:00-15:00 for lunch
-        for (let h = 9; h <= 17; h++) {
-            if (h === 14) continue; // Skip 2 PM hour for lunch
+        // Nuevo horario de 8:00 (8) a 20:00 (8 PM), cada 30 minutos.
+        for (let h = 8; h < 20; h++) { // El bucle se detiene antes de las 20:00
+            if (h === 14) continue; // Mantenemos el bloqueo de las 2 PM para la comida
             for (let m = 0; m < 60; m += 30) {
-                if (h === 17 && m === 30) continue; // Don't allow 17:30 if last slot is 17:00
                 const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
                 slots.push(time);
             }
         }
         return slots;
     };
+    // --- FIN DE SECCIÓN MODIFICADA ---
 
     const timeSlots = generateTimeSlots();
     const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
