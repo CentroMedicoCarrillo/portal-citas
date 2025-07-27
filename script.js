@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const consultationTypeSelect = document.getElementById('consultation-type-select');
 
     // --- WEBHOOKS ---
-    const availabilityWebhookUrl = 'PEGA_AQUI_LA_URL_DE_TU_NUEVO_WEBHOOK_DE_DISPONIBILIDAD';
+    const availabilityWebhookUrl = 'https://hook.us2.make.com/zd9zkvqwn5s575tok2k7sopctcnaxcu4';
     const createAppointmentWebhookUrl = 'https://hook.us2.make.com/e38eflwwnios13ggi9h4jlkj31s2xc28'; // Tu webhook existente
 
     let currentWeekStart = new Date();
