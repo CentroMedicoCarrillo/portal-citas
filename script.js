@@ -1,8 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- NUEVAS CONSTANTES ---
-    const consultationTypeSelect = document.getElementById('consultation-type-select');
-
-    // --- CONSTANTES EXISTENTES ---
+    // --- CONSTANTES ---
     const calendarGrid = document.getElementById('calendar-grid');
     const currentWeekDisplay = document.getElementById('current-week-display');
     const prevWeekBtn = document.getElementById('prev-week-btn');
@@ -21,79 +18,62 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmAppointmentBtn = document.getElementById('confirm-appointment-btn');
     const appointmentForm = document.getElementById('appointment-form');
     const doctorSelect = document.getElementById('doctor-select');
+    const consultationTypeSelect = document.getElementById('consultation-type-select');
+
+    // --- WEBHOOKS ---
+    const availabilityWebhookUrl = 'PEGA_AQUI_LA_URL_DE_TU_NUEVO_WEBHOOK_DE_DISPONIBILIDAD';
+    const createAppointmentWebhookUrl = 'https://hook.us2.make.com/e38eflwwnios13ggi9h4jlkj31s2xc28'; // Tu webhook existente
 
     let currentWeekStart = new Date();
     let selectedSlot = null;
     let bookedAppointments = {};
 
-    // --- FUNCIONES DE FECHA (Sin cambios) ---
-    const formatDate = (date) => {
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        return date.toLocaleDateString('es-ES', options);
-    };
-    const formatShortDate = (date) => {
-        return date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
-    };
-    const getWeekRange = (date) => {
-        const startOfWeek = new Date(date);
-        startOfWeek.setDate(date.getDate() - date.getDay());
-        const endOfWeek = new Date(startOfWeek);
-        endOfWeek.setDate(startOfWeek.getDate() + 6);
-        return `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}`;
-    };
-
-    // --- FUNCIÓN MODIFICADA: generateTimeSlots ---
-    const generateTimeSlots = (durationMinutes) => {
-        const slots = [];
-        const interval = parseInt(durationMinutes);
-        // Horario de 8:00 (8) a 20:00 (8 PM)
-        for (let h = 8; h < 20; h++) {
-            if (h === 14) continue; // Mantenemos el bloqueo de las 2 PM para la comida
-            for (let m = 0; m < 60; m += interval) {
-                // Prevenir que se generen slots que terminen después de las 8 PM
-                if (h === 19 && (m + interval) > 60) continue;
-                
-                const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-                slots.push(time);
+    // --- LÓGICA DE DISPONIBILIDAD ---
+    const fetchAvailability = async (startDate, endDate) => {
+        try {
+            const response = await fetch(availabilityWebhookUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    startDate: startDate.toISOString(),
+                    endDate: endDate.toISOString()
+                })
+            });
+            if (!response.ok) throw new Error('Error al obtener la disponibilidad');
+            
+            const data = await response.json();
+            
+            bookedAppointments = {}; // Limpiamos las citas anteriores
+            if (data.bookedSlots) {
+                data.bookedSlots.forEach(isoString => {
+                    const date = new Date(isoString);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    const slotKey = `${year}-${month}-${day} ${hours}:${minutes}`;
+                    bookedAppointments[slotKey] = true;
+                });
             }
-        }
-        return slots;
-    };
-
-    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-
-    // --- FUNCIÓN populateMonthYearDropdowns (Sin cambios) ---
-    const populateMonthYearDropdowns = () => {
-        const today = new Date();
-        const currentMonth = today.getMonth();
-        const currentYear = today.getFullYear();
-        monthSelect.innerHTML = '';
-        monthNames.forEach((name, index) => {
-            const option = document.createElement('option');
-            option.value = index;
-            option.textContent = name;
-            if (index === currentMonth) option.selected = true;
-            monthSelect.appendChild(option);
-        });
-        yearSelect.innerHTML = '';
-        for (let i = currentYear - 2; i <= currentYear + 5; i++) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = i;
-            if (i === currentYear) option.selected = true;
-            yearSelect.appendChild(option);
+        } catch (error) {
+            console.error("No se pudo cargar la disponibilidad:", error);
         }
     };
 
-    // --- FUNCIÓN MODIFICADA: renderCalendar ---
-    const renderCalendar = () => {
-        const selectedDuration = consultationTypeSelect.value;
-        const timeSlots = generateTimeSlots(selectedDuration);
-
-        calendarGrid.innerHTML = '';
+    // --- LÓGICA DEL CALENDARIO ---
+    const renderCalendar = async () => {
         const startOfWeek = new Date(currentWeekStart);
         startOfWeek.setDate(currentWeekStart.getDate() - currentWeekStart.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        endOfWeek.setHours(23, 59, 59, 999);
+
+        await fetchAvailability(startOfWeek, endOfWeek);
+
+        const selectedDuration = consultationTypeSelect.value;
+        const timeSlots = generateTimeSlots(selectedDuration);
+        calendarGrid.innerHTML = '';
         currentWeekDisplay.textContent = getWeekRange(currentWeekStart);
 
         if (window.innerWidth > 768) {
@@ -156,8 +136,64 @@ document.addEventListener('DOMContentLoaded', () => {
             calendarGrid.appendChild(dayElement);
         }
     };
+    
+    // --- FUNCIONES AUXILIARES Y DE FORMULARIO ---
+    const generateTimeSlots = (durationMinutes) => {
+        const slots = [];
+        const interval = parseInt(durationMinutes);
+        for (let h = 8; h < 20; h++) {
+            if (h === 14) continue;
+            for (let m = 0; m < 60; m += interval) {
+                if (h === 19 && (m + interval) > 60) continue;
+                const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                slots.push(time);
+            }
+        }
+        return slots;
+    };
 
-    // --- openModal y closeModal (Sin cambios) ---
+    const formatDate = (date) => {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        return date.toLocaleDateString('es-ES', options);
+    };
+
+    const formatShortDate = (date) => {
+        return date.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+    };
+
+    const getWeekRange = (date) => {
+        const startOfWeek = new Date(date);
+        startOfWeek.setDate(date.getDate() - date.getDay());
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+        return `${formatDate(startOfWeek)} - ${formatDate(endOfWeek)}`;
+    };
+
+    const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+    const populateMonthYearDropdowns = () => {
+        const today = new Date();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        monthSelect.innerHTML = '';
+        monthNames.forEach((name, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = name;
+            if (index === currentMonth) option.selected = true;
+            monthSelect.appendChild(option);
+        });
+        yearSelect.innerHTML = '';
+        for (let i = currentYear - 2; i <= currentYear + 5; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = i;
+            if (i === currentYear) option.selected = true;
+            yearSelect.appendChild(option);
+        }
+    };
+
     const openModal = (slotElement) => {
         selectedSlot = slotElement;
         const date = new Date(slotElement.dataset.date);
@@ -172,12 +208,12 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmAppointmentBtn.disabled = false;
         appointmentModal.classList.add('visible');
     };
+
     const closeModal = () => {
         appointmentModal.classList.remove('visible');
         selectedSlot = null;
     };
 
-    // --- Validación de teléfono (Sin cambios) ---
     patientPhoneInput.addEventListener('input', () => {
         const value = patientPhoneInput.value.replace(/\D/g, '');
         patientPhoneInput.value = value;
@@ -193,7 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // --- FUNCIÓN MODIFICADA: appointmentForm event listener ---
     appointmentForm.addEventListener('submit', (e) => {
         e.preventDefault();
         if (patientPhoneInput.value.length !== 10) {
@@ -211,32 +246,34 @@ document.addEventListener('DOMContentLoaded', () => {
             patientName: patientNameInput.value.trim(),
             patientPhone: patientPhoneInput.value.trim(),
             patientEmail: patientEmailInput.value.trim(),
-            duration: consultationTypeSelect.value // <- AÑADIMOS LA DURACIÓN
+            duration: consultationTypeSelect.value
         };
 
-        fetch('https://hook.us2.make.com/e38eflwwnios13ggi9h4jlkj31s2xc28', {
+        fetch(createAppointmentWebhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(appointmentDetails),
         })
-        .then(response => {
-            if (response.ok) return response.text();
-            throw new Error('Hubo un problema con la solicitud a Make.com.');
-        })
+        .then(response => response.json())
         .then(data => {
-            console.log('Respuesta de Make.com:', data);
-            const slotKey = `${appointmentDetails.date} ${appointmentDetails.time}`;
-            bookedAppointments[slotKey] = true;
-            if (selectedSlot) {
-                selectedSlot.classList.add('booked');
-                selectedSlot.title = "Cita ya agendada";
+            if (data.status === 'error') {
+                alert(data.message);
+            } else {
+                console.log('Respuesta de Make.com:', data);
+                const slotKey = `${appointmentDetails.date} ${appointmentDetails.time}`;
+                bookedAppointments[slotKey] = true;
+                if (selectedSlot) {
+                    selectedSlot.classList.add('booked');
+                    selectedSlot.title = "Cita ya agendada";
+                }
+                alert(`¡Cita confirmada para ${appointmentDetails.patientName}! Revisa tu correo para la invitación de calendario.`);
+                closeModal();
+                renderCalendar();
             }
-            alert(`¡Cita confirmada para ${appointmentDetails.patientName}! Revisa tu correo para la invitación de calendario.`);
-            closeModal();
         })
         .catch((error) => {
             console.error('Error:', error);
-            alert('No se pudo confirmar la cita. Por favor, inténtalo de nuevo.');
+            alert('No se pudo confirmar la cita. Hubo un problema de conexión.');
         })
         .finally(() => {
             confirmAppointmentBtn.textContent = 'Confirmar Cita';
@@ -244,7 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --- NAVEGACIÓN Y EVENT LISTENERS (Con una adición) ---
+    // --- EVENT LISTENERS ---
     closeModalBtn.addEventListener('click', closeModal);
     appointmentModal.addEventListener('click', (e) => { if (e.target === appointmentModal) closeModal(); });
     prevWeekBtn.addEventListener('click', () => {
@@ -271,13 +308,10 @@ document.addEventListener('DOMContentLoaded', () => {
         currentWeekStart = new Date(newYear, newMonth, 1);
         renderCalendar();
     });
-
-    // --- NUEVO EVENT LISTENER ---
-    // Para que el calendario se actualice al cambiar el tipo de consulta
     consultationTypeSelect.addEventListener('change', renderCalendar);
 
-    // --- INICIALIZACIÓN (Sin cambios) ---
+    // --- INICIALIZACIÓN ---
     populateMonthYearDropdowns();
-    renderCalendar();
+    renderCalendar(); // Carga inicial del calendario
     window.addEventListener('resize', renderCalendar);
 });
