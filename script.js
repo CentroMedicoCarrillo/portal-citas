@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     selectedSlot.classList.add('booked');
                     selectedSlot.title = "Cita ya agendada";
                 }
-                alert(`¡Cita confirmada para ${appointmentDetails.patientName}! Revisa tu correo para la invitación de calendario.`);
+                alert(`${data.message} para ${appointmentDetails.patientName}. Revisa tu correo para la invitación de calendario.`);
                 closeModal();
                 renderCalendar();
             }
