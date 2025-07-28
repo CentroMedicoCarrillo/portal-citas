@@ -22,50 +22,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- WEBHOOKS ---
     const availabilityWebhookUrl = 'https://hook.us2.make.com/zd9zkvqwn5s575tok2k7sopctcnaxcu4';
-    const createAppointmentWebhookUrl = 'https://hook.us2.make.com/e38eflwwnios13ggi9h4jlkj31s2xc28'; // Tu webhook existente
+    const createAppointmentWebhookUrl = 'https://hook.us2.make.com/e38eflwwnios13ggi9h4jlkj31s2xc28';
 
     let currentWeekStart = new Date();
     let selectedSlot = null;
     let bookedAppointments = {};
 
-    // --- LÓGICA DE DISPONIBILIDAD (VERSIÓN CORREGIDA) ---
-const fetchAvailability = async (startDate, endDate) => {
-    try {
-        calendarGrid.innerHTML = '<p style="text-align: center; padding: 20px;">Cargando disponibilidad...</p>';
-        const urlWithParams = `${availabilityWebhookUrl}?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-        const response = await fetch(urlWithParams);
-        
-        if (!response.ok) throw new Error('Error al obtener la disponibilidad');
-        
-        const data = await response.json();
-        
-        bookedAppointments = {}; 
-        if (data.bookedSlots && typeof data.bookedSlots === 'string') {
-            const slotsArray = data.bookedSlots.split(',');
+    // --- LÓGICA DE DISPONIBILIDAD ---
+    const fetchAvailability = async (startDate, endDate) => {
+        try {
+            calendarGrid.innerHTML = '<p style="text-align: center; padding: 20px;">Cargando disponibilidad...</p>';
+            const urlWithParams = `${availabilityWebhookUrl}?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+            const response = await fetch(urlWithParams);
+            
+            if (!response.ok) throw new Error('Error al obtener la disponibilidad');
+            
+            const data = await response.json();
+            
+            bookedAppointments = {}; 
+            if (data.bookedSlots && typeof data.bookedSlots === 'string') {
+                const slotsArray = data.bookedSlots.split(',');
 
-            slotsArray.forEach(isoString => {
-                if (!isoString) return;
-                
-                // --- INICIA CORRECCIÓN FINAL ---
-                // Google devuelve un formato ISO completo. Lo usamos para crear la fecha.
-                const date = new Date(isoString);
-                
-                // No necesitamos corrección de zona horaria, ya que el objeto Date la maneja.
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                const hours = String(date.getHours()).padStart(2, '0');
-                const minutes = String(date.getMinutes()).padStart(2, '0');
-                const slotKey = `${year}-${month}-${day} ${hours}:${minutes}`;
-                bookedAppointments[slotKey] = true;
-                // --- TERMINA CORRECCIÓN FINAL ---
-            });
+                slotsArray.forEach(isoString => {
+                    if (!isoString) return;
+                    
+                    const date = new Date(isoString);
+                    
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    const slotKey = `${year}-${month}-${day} ${hours}:${minutes}`;
+                    bookedAppointments[slotKey] = true;
+                });
+            }
+        } catch (error) {
+            console.error("No se pudo cargar la disponibilidad:", error);
+            calendarGrid.innerHTML = '<p style="text-align: center; padding: 20px; color: red;">Error al cargar la disponibilidad. Intente de nuevo.</p>';
         }
-    } catch (error) {
-        console.error("No se pudo cargar la disponibilidad:", error);
-        calendarGrid.innerHTML = '<p style="text-align: center; padding: 20px; color: red;">Error al cargar la disponibilidad. Intente de nuevo.</p>';
-    }
-};
+    };
 
     // --- LÓGICA DEL CALENDARIO ---
     const renderCalendar = async () => {
@@ -202,7 +198,7 @@ const fetchAvailability = async (startDate, endDate) => {
 
     const openModal = (slotElement) => {
         selectedSlot = slotElement;
-        const date = new Date(slotElement.dataset.date);
+        const date = new Date(slotElement.dataset.date + 'T00:00:00'); // Corrección de zona horaria
         const time = slotElement.dataset.time;
         const doctorName = doctorSelect.value;
         modalDoctorName.textContent = doctorName;
@@ -266,12 +262,6 @@ const fetchAvailability = async (startDate, endDate) => {
                 alert(data.message);
             } else {
                 console.log('Respuesta de Make.com:', data);
-                const slotKey = `${appointmentDetails.date} ${appointmentDetails.time}`;
-                bookedAppointments[slotKey] = true;
-                if (selectedSlot) {
-                    selectedSlot.classList.add('booked');
-                    selectedSlot.title = "Cita ya agendada";
-                }
                 alert(`${data.message} para ${appointmentDetails.patientName}. Revisa tu correo para la invitación de calendario.`);
                 closeModal();
                 renderCalendar();
