@@ -31,42 +31,34 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- LÓGICA DE DISPONIBILIDAD (VERSIÓN CORREGIDA) ---
 const fetchAvailability = async (startDate, endDate) => {
     try {
-        console.log("Paso 1: Entrando a fetchAvailability...");
-        console.log("Paso 2: Intentando llamar a la URL:", availabilityWebhookUrl);
-        // Muestra un indicador de carga
         calendarGrid.innerHTML = '<p style="text-align: center; padding: 20px;">Cargando disponibilidad...</p>';
-
-        // --- INICIA CAMBIO ---
-        // Construimos la URL con los parámetros directamente, como una petición GET
         const urlWithParams = `${availabilityWebhookUrl}?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-
-        const response = await fetch(urlWithParams); // Ya no necesitamos method, headers ni body
-        // --- TERMINA CAMBIO ---
+        const response = await fetch(urlWithParams);
         
         if (!response.ok) throw new Error('Error al obtener la disponibilidad');
         
         const data = await response.json();
         
-        bookedAppointments = {}; // Limpiamos las citas anteriores
-        if (data.bookedSlots) {
-            // El resto de esta sección puede variar dependiendo de cómo configuraste el Text Aggregator.
-            // Esta versión asume que bookedSlots es un array de fechas ISO.
-            const slotsArray = Array.isArray(data.bookedSlots) ? data.bookedSlots : (data.bookedSlots.text || "").split(',');
+        bookedAppointments = {}; 
+        if (data.bookedSlots && typeof data.bookedSlots === 'string') {
+            const slotsArray = data.bookedSlots.split(',');
 
             slotsArray.forEach(isoString => {
                 if (!isoString) return;
+                
+                // --- INICIA CORRECCIÓN FINAL ---
+                // Google devuelve un formato ISO completo. Lo usamos para crear la fecha.
                 const date = new Date(isoString);
-                // Corrección para la zona horaria al procesar la respuesta
-                const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-                const localDate = new Date(date.getTime() + userTimezoneOffset);
-
-                const year = localDate.getFullYear();
-                const month = String(localDate.getMonth() + 1).padStart(2, '0');
-                const day = String(localDate.getDate()).padStart(2, '0');
-                const hours = String(localDate.getHours()).padStart(2, '0');
-                const minutes = String(localDate.getMinutes()).padStart(2, '0');
+                
+                // No necesitamos corrección de zona horaria, ya que el objeto Date la maneja.
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
                 const slotKey = `${year}-${month}-${day} ${hours}:${minutes}`;
                 bookedAppointments[slotKey] = true;
+                // --- TERMINA CORRECCIÓN FINAL ---
             });
         }
     } catch (error) {
