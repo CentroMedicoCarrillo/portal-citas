@@ -31,6 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- LÓGICA DE DISPONIBILIDAD (VERSIÓN CORREGIDA) ---
 const fetchAvailability = async (startDate, endDate) => {
     try {
+        console.log("Paso 1: Entrando a fetchAvailability...");
+        console.log("Paso 2: Intentando llamar a la URL:", availabilityWebhookUrl);
         // Muestra un indicador de carga
         calendarGrid.innerHTML = '<p style="text-align: center; padding: 20px;">Cargando disponibilidad...</p>';
 
